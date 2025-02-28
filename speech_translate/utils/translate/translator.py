@@ -8,7 +8,6 @@ from tqdm.auto import tqdm
 
 from ..helper import get_similar_keys, no_connection_notify
 from .language import GOOGLE_KEY_VAL, LIBRE_KEY_VAL, MYMEMORY_KEY_VAL, DEEPL_KEY_VAL
-from deep_translator import DeeplTranslator
 
 def tl_batch_with_tqdm(self, batch: List[str], **kwargs) -> list:
     """Translate a batch of texts
@@ -41,12 +40,14 @@ def tl_batch_with_tqdm(self, batch: List[str], **kwargs) -> list:
 
 # Import the translator
 try:
-    from deep_translator import GoogleTranslator, MyMemoryTranslator
+    from deep_translator import GoogleTranslator, MyMemoryTranslator, DeeplTranslator
     GoogleTranslator._translate_batch = tl_batch_with_tqdm
+    DeeplTranslator._translate_batch = tl_batch_with_tqdm
     MyMemoryTranslator._translate_batch = tl_batch_with_tqdm
 except Exception as e:
     GoogleTranslator = None
     MyMemoryTranslator = None
+    DeeplTranslator = None
     if "HTTPSConnectionPool" in str(e):
         logger.error("No Internet Connection! / Host might be down")
         no_connection_notify()
@@ -62,13 +63,15 @@ class TranslationConnection:
     ----------
         GoogleTranslator (function): Google Translate
         MyMemoryTranslator (function): MyMemoryTranslator
+        DeeplTranslator (function): DEEPL Translate
     """
-    def __init__(self, GoogleTranslator, MyMemoryTranslator):
+    def __init__(self, GoogleTranslator, MyMemoryTranslator, DeeplTranslator):
         self.GoogleTranslator = GoogleTranslator
         self.MyMemoryTranslator = MyMemoryTranslator
+        self.DeeplTranslator = DeeplTranslator
 
 
-TlCon = TranslationConnection(GoogleTranslator, MyMemoryTranslator)
+TlCon = TranslationConnection(GoogleTranslator, MyMemoryTranslator, DeeplTranslator)
 
 
 def google_tl(text: List[str], from_lang: str, to_lang: str, proxies: Dict, debug_log: bool = False, **kwargs):
@@ -178,9 +181,22 @@ def deepl_tl(text: List[str], from_lang: str, to_lang: str, proxies: Dict, debug
     # using deep_translator v 1.11.1
     # --- Translate ---
     try:
+        if TlCon.DeeplTranslator is None:
+            try:
+                from deep_translator import DeeplTranslator
 
-        result = DeeplTranslator(source=LCODE_FROM, target=LCODE_TO,
-                                        proxies=proxies, api_key=os.environ.get("DEEPL_API_KEY")).translate_batch(text)
+                TlCon.DeeplTranslator = DeeplTranslator
+                TlCon.DeeplTranslator._translate_batch = tl_batch_with_tqdm
+            except Exception:
+                no_connection_notify()
+                return is_success, "Error: Not connected to internet"
+
+        tl_kwargs = {}
+        if kwargs.pop("live_input", False):
+            tl_kwargs["with_tqdm"] = False
+
+        result = TlCon.DeeplTranslator(source=LCODE_FROM, target=LCODE_TO,
+                                        proxies=proxies, api_key=os.environ.get("DEEPL_API_KEY")).translate_batch(text, **tl_kwargs)
         is_success = True
     except Exception as e:
         logger.exception(e)
