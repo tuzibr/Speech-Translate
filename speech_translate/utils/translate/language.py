@@ -1,7 +1,8 @@
+import os
 from copy import deepcopy
 from typing import Dict, List
 
-from deep_translator import GoogleTranslator, MyMemoryTranslator
+from deep_translator import GoogleTranslator, MyMemoryTranslator, DeeplTranslator
 from loguru import logger
 
 from ..helper import get_similar_in_list, up_first_case
@@ -147,6 +148,8 @@ GOOGLE_KEY_VAL["auto detect"] = "auto"
 if "filipino" in GOOGLE_KEY_VAL.keys():
     GOOGLE_KEY_VAL["filipino (tagalog)"] = GOOGLE_KEY_VAL.pop("filipino")
 
+DEEPL_KEY_VAL = deepcopy(DeeplTranslator(api_key=os.environ.get("DEEPL_API_KEY")).get_supported_languages(as_dict=True))
+
 # List of supported languages by MyMemoryTranslator
 MYMEMORY_KEY_VAL = deepcopy(MyMemoryTranslator().get_supported_languages(as_dict=True))
 assert isinstance(MYMEMORY_KEY_VAL, Dict)
@@ -239,6 +242,8 @@ def verify_language_in_key(search: str, engine: str) -> bool:
         return search in LIBRE_KEY_VAL.keys()
     elif engine == "MyMemoryTranslator":
         return search in MYMEMORY_KEY_VAL.keys()
+    elif engine == "DEEPL Translate":
+        return search in DEEPL_KEY_VAL.keys()
     else:
         raise ValueError("Engine not found")
 
@@ -309,6 +314,10 @@ GOOGLE_TARGET.remove("auto detect")
 GOOGLE_TARGET = [up_first_case(x) for x in GOOGLE_TARGET]
 GOOGLE_TARGET.sort()
 
+DEEPL_TARGET = list(DEEPL_KEY_VAL.keys())
+DEEPL_TARGET = [up_first_case(x) for x in DEEPL_TARGET]
+DEEPL_TARGET.sort()
+
 LIBRE_TARGET = list(LIBRE_KEY_VAL.keys())
 LIBRE_TARGET.remove("auto detect")
 LIBRE_TARGET = [up_first_case(x) for x in LIBRE_TARGET]
@@ -335,6 +344,7 @@ TL_ENGINE_TARGET_DICT = {
     # selecting whisper as the tl engine
     # selecting TL API as the tl engine
     "Google Translate": GOOGLE_TARGET,
+    "DEEPL Translate": DEEPL_TARGET,
     "LibreTranslate": LIBRE_TARGET,
     "MyMemoryTranslator": MY_MEMORY_TARGET,
 }
@@ -353,6 +363,14 @@ for i, lang in enumerate(GOOGLE_WHISPER_COMPATIBLE):
     if len(is_it_there) == 0:
         to_remove.append(lang)
 GOOGLE_WHISPER_COMPATIBLE = [x for x in GOOGLE_WHISPER_COMPATIBLE if x not in to_remove]
+
+to_remove = []
+DEEPL_WHISPER_COMPATIBLE = DEEPL_TARGET.copy()
+for i, lang in enumerate(DEEPL_WHISPER_COMPATIBLE):
+    is_it_there = get_similar_in_list(WHISPER_LANG_LIST, lang)
+    if len(is_it_there) == 0:
+        to_remove.append(lang)
+DEEPL_WHISPER_COMPATIBLE = [x for x in DEEPL_WHISPER_COMPATIBLE if x not in to_remove]
 
 # --- LIBRE --- | Filtering
 to_remove = []
@@ -383,6 +401,11 @@ GOOGLE_LIST_UPPED = [up_first_case(x) for x in GOOGLE_WHISPER_COMPATIBLE]
 GOOGLE_LIST_UPPED.sort()
 GOOGLE_SOURCE = ["Auto detect"] + GOOGLE_LIST_UPPED
 
+DEEPL_LIST_UPPED = [up_first_case(x) for x in DEEPL_WHISPER_COMPATIBLE]
+DEEPL_LIST_UPPED.sort()
+DEEPL_SOURCE = DEEPL_LIST_UPPED
+
+
 LIBRE_LIST_UPPED = [up_first_case(x) for x in LIBRE_WHISPER_COMPATIBLE]
 LIBRE_LIST_UPPED.sort()
 LIBRE_SOURCE = ["Auto detect"] + LIBRE_LIST_UPPED
@@ -406,6 +429,7 @@ TL_ENGINE_SOURCE_DICT = {
     "🐌 Large V3 [10GB VRAM] (Most Accurate)": WHISPER_SOURCE_V3,  # only v3 has cantonese
     # selecting TL API as the tl engine
     "Google Translate": GOOGLE_SOURCE,
+    "DEEPL Translate": DEEPL_SOURCE,
     "LibreTranslate": LIBRE_SOURCE,
     "MyMemoryTranslator": MYMEMORY_SOURCE,
 }

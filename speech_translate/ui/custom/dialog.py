@@ -260,6 +260,7 @@ class FileImportDialog(FileOperationDialog):
             self.frame_top, {
                 "Whisper": model_keys,
                 "Google Translate": [],
+                "DEEPL Translate": [],
                 "MyMemoryTranslator": [],
                 "LibreTranslate": [],
             },
@@ -504,6 +505,7 @@ class TranslateResultDialog(FileOperationDialog):
             self.root,
             self.frame_top, {
                 "Google Translate": [],
+                "DEEPL Translate": [],
                 "MyMemoryTranslator": [],
                 "LibreTranslate": [],
             },

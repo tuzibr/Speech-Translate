@@ -341,6 +341,7 @@ class MainWindow:
             self.root, self.f1_toolbar, {
                 "Whisper": model_keys,
                 "Google Translate": [],
+                "DEEPL Translate": [],
                 "MyMemoryTranslator": [],
                 "LibreTranslate": [],
             }, self.cb_engine_change

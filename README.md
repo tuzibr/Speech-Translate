@@ -72,6 +72,17 @@ Speech Translate aims to expand whisper ability by combining it with some transl
 - [Attribution](#attribution)
 - [Other](#other)
 
+# 🚀 NEW Features
+- Add DeepL translate api
+
+Set your API key in the user environment variables, restart your computer, and enjoy.
+
+DEEPL_API_KEY = your key
+
+<p align="center">
+  <img src="preview/deepl.png" width="700" alt="Speech Translate Preview">
+</p>
+
 # 🚀 Features
 
 - Speech to text and/or Speech translation (transcribed text can be translated to other languages) with live input from mic or speaker 🎙️

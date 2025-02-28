@@ -1,4 +1,5 @@
 # pylint: disable=protected-access, redefined-outer-name, import-outside-toplevel, invalid-name
+import os
 from typing import Dict, List
 
 import requests
@@ -6,8 +7,8 @@ from loguru import logger
 from tqdm.auto import tqdm
 
 from ..helper import get_similar_keys, no_connection_notify
-from .language import GOOGLE_KEY_VAL, LIBRE_KEY_VAL, MYMEMORY_KEY_VAL
-
+from .language import GOOGLE_KEY_VAL, LIBRE_KEY_VAL, MYMEMORY_KEY_VAL, DEEPL_KEY_VAL
+from deep_translator import DeeplTranslator
 
 def tl_batch_with_tqdm(self, batch: List[str], **kwargs) -> list:
     """Translate a batch of texts
@@ -138,6 +139,59 @@ def google_tl(text: List[str], from_lang: str, to_lang: str, proxies: Dict, debu
 
     return is_success, result
 
+def deepl_tl(text: List[str], from_lang: str, to_lang: str, proxies: Dict, debug_log: bool = False, **kwargs):
+    """Translate Using DeeplTranslator
+    Args
+    ----
+        text (List[str]): Text to translate
+        from_lang (str): Language From
+        to_lang (str): Language to translate
+        proxies (Dict): Proxies. Defaults to None.
+        debug_log (bool, optional): Debug Log. Defaults to False.
+
+    Returns
+    -------
+        is_success: Success or not
+        result: Translation result
+    """
+    is_success = False
+    result = ""
+    # --- Get lang code ---
+    try:
+        assert isinstance(DEEPL_KEY_VAL, Dict)
+        try:
+            LCODE_FROM = DEEPL_KEY_VAL[from_lang]
+            LCODE_TO = DEEPL_KEY_VAL[to_lang]
+        except KeyError:
+            logger.warning("Language Code Undefined. Trying to get similar keys")
+            try:
+                LCODE_FROM = DEEPL_KEY_VAL[get_similar_keys(GOOGLE_KEY_VAL, from_lang)[0]]
+                logger.debug(f"Got similar key for GOOGLE LANG {from_lang}: {LCODE_FROM}")
+            except KeyError:
+                logger.warning("Source Language Code Undefined. Using auto")
+                LCODE_FROM = "auto"
+            LCODE_TO = DEEPL_KEY_VAL[get_similar_keys(GOOGLE_KEY_VAL, to_lang)[0]]
+    except KeyError as e:
+        logger.exception(e)
+        return is_success, "Error Language Code Undefined"
+
+    # using deep_translator v 1.11.1
+    # --- Translate ---
+    try:
+
+        result = DeeplTranslator(source=LCODE_FROM, target=LCODE_TO,
+                                        proxies=proxies, api_key=os.environ.get("DEEPL_API_KEY")).translate_batch(text)
+        is_success = True
+    except Exception as e:
+        logger.exception(e)
+        result = str(e)
+    finally:
+        if debug_log:
+            logger.info("-" * 50)
+            logger.debug("Query: " + str(text))
+            logger.debug("Translation Get: " + str(result))
+
+    return is_success, result
 
 def memory_tl(text: List[str], from_lang: str, to_lang: str, proxies: Dict, debug_log: bool = False, **kwargs):
     """Translate Using MyMemoryTranslator
@@ -302,6 +356,7 @@ def libre_tl(
 
 tl_dict = {
     "Google Translate": google_tl,
+    "DEEPL Translate": deepl_tl,
     "MyMemoryTranslator": memory_tl,
     "LibreTranslate": libre_tl,
 }
